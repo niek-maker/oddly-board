@@ -10,8 +10,9 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg: #0a0a0a; --surface: #141414; --border: #2a2a2a;
+      --bg: #0a0a0a; --surface: #141414; --surface-hover: #1a1a1a; --border: #2a2a2a;
       --text: #f0f0f0; --text-muted: #888; --accent: #c8ff00; --danger: #ff4d4d;
+      --success: #00d68f;
     }
     body { font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
@@ -31,29 +32,64 @@
 
     .admin-content { max-width: 900px; margin: 0 auto; padding: 2rem; }
 
-    /* BUTTONS */
     .btn {
       padding: 0.6rem 1.2rem; border: none; border-radius: 10px; background: var(--accent);
       color: #000; font-family: inherit; font-weight: 600; font-size: 0.85rem; cursor: pointer;
+      transition: all 0.15s;
     }
     .btn:hover { opacity: 0.85; }
+    .btn:active { transform: scale(0.97); }
     .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px; }
     .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
     .btn-outline:hover { border-color: #555; color: var(--text); }
     .btn-danger { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
     .btn-danger:hover { color: var(--danger); border-color: var(--danger); }
+    .btn-save { background: var(--success); color: #000; }
 
-    /* INPUTS */
     input[type="text"], input[type="url"], textarea, select {
       width: 100%; padding: 0.65rem 0.9rem; border: 1px solid var(--border); border-radius: 8px;
       background: var(--bg); color: var(--text); font-family: inherit; font-size: 0.9rem; outline: none;
+      transition: border-color 0.2s;
     }
     input:focus, textarea:focus, select:focus { border-color: var(--accent); }
     textarea { resize: vertical; min-height: 80px; }
     label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.05em; }
 
-    /* TOP ACTIONS */
     .top-actions { display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap; }
+
+    /* TAGS SECTION */
+    .tags-section {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      padding: 1.2rem; margin-bottom: 2rem;
+    }
+    .tags-section h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
+    .tags-list { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .tag-pill {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+      cursor: default;
+    }
+    .tag-pill .tag-delete {
+      cursor: pointer; opacity: 0.6; font-size: 0.7rem;
+    }
+    .tag-pill .tag-delete:hover { opacity: 1; }
+    .add-tag-row { display: flex; gap: 0.5rem; align-items: center; }
+    .add-tag-row input { max-width: 200px; }
+    .add-tag-row input[type="color"] {
+      width: 36px; height: 36px; padding: 2px; border-radius: 8px; cursor: pointer;
+      background: var(--bg); border: 1px solid var(--border);
+    }
+
+    /* TAG SELECTOR (for items) */
+    .tag-selector { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+    .tag-option {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.25rem 0.65rem; border-radius: 16px; font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; opacity: 0.5; transition: opacity 0.15s;
+      border: 2px solid transparent;
+    }
+    .tag-option.selected { opacity: 1; border-color: rgba(255,255,255,0.3); }
+    .tag-option:hover { opacity: 0.8; }
 
     /* CATEGORY BLOCK */
     .category-block {
@@ -76,7 +112,6 @@
 
     .category-body { padding: 1rem 1.2rem; }
 
-    /* SUBCATEGORY */
     .subcategory-block {
       background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
       margin-bottom: 1rem; overflow: hidden;
@@ -95,12 +130,12 @@
 
     .subcategory-body { padding: 0.75rem 1rem; }
 
-    /* ITEM ROW */
     .item-row {
       display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem;
       background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-      margin-bottom: 0.5rem; cursor: grab;
+      margin-bottom: 0.5rem; cursor: grab; transition: border-color 0.2s;
     }
+    .item-row:hover { border-color: #3a3a3a; }
     .item-row:active { cursor: grabbing; }
     .item-type-badge {
       font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em;
@@ -113,15 +148,44 @@
       font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;
       overflow: hidden; text-overflow: ellipsis;
     }
-
-    /* ADD ITEM FORM */
-    .add-item-form {
-      border: 1px dashed var(--border); border-radius: 8px; padding: 1rem;
-      margin-top: 0.75rem; display: none;
+    .item-info-tags { display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.2rem; }
+    .item-info-tags .mini-tag {
+      font-size: 0.6rem; padding: 0.1rem 0.4rem; border-radius: 8px; font-weight: 600;
     }
-    .add-item-form.open { display: block; }
+    .item-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
+
+    .item-thumb {
+      width: 48px; height: 48px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
+      background: var(--bg); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .item-thumb .thumb-icon { font-size: 1.1rem; color: var(--text-muted); }
+
+    .item-form {
+      border: 1px dashed var(--border); border-radius: 10px; padding: 1.2rem;
+      margin-top: 0.75rem; display: none; background: var(--surface);
+    }
+    .item-form.open { display: block; }
     .form-row { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; }
     .form-row > * { flex: 1; }
+    .form-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+
+    .live-preview {
+      margin-top: 1rem; border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden; background: var(--bg);
+    }
+    .live-preview-label {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--text-muted); padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border);
+    }
+    .live-preview-content { max-height: 300px; overflow: hidden; }
+    .live-preview-content iframe { width: 100%; height: 250px; border: none; }
+    .live-preview-content img { width: 100%; max-height: 250px; object-fit: cover; display: block; }
+    .live-preview-content .preview-text {
+      padding: 1rem; font-size: 0.9rem; line-height: 1.6; color: var(--text);
+      white-space: pre-wrap; max-height: 200px; overflow-y: auto;
+    }
 
     .file-upload-area {
       border: 2px dashed var(--border); border-radius: 8px; padding: 2rem;
@@ -131,22 +195,38 @@
     .file-upload-area.dragging { border-color: var(--accent); background: #c8ff0011; }
     .file-upload-area img { max-width: 200px; max-height: 150px; border-radius: 6px; margin-top: 0.5rem; }
 
-    /* SORTABLE GHOST */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;
+      display: none; align-items: center; justify-content: center; padding: 2rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 2rem;
+    }
+    .modal h2 { font-size: 1.2rem; margin-bottom: 1.5rem; }
+
+    .item-count {
+      font-size: 0.7rem; background: var(--bg); color: var(--text-muted);
+      padding: 0.15rem 0.5rem; border-radius: 10px; margin-left: 0.5rem;
+    }
+
     .sortable-ghost { opacity: 0.3; }
     .sortable-drag { opacity: 0.9; }
 
-    /* TOAST */
     .toast {
       position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px);
       background: var(--accent); color: #000; padding: 0.75rem 1.5rem; border-radius: 10px;
       font-weight: 600; font-size: 0.9rem; transition: transform 0.3s ease; z-index: 1000;
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: var(--danger); color: #fff; }
 
     @media (max-width: 600px) {
       .admin-content { padding: 1rem; }
       .topbar { padding: 1rem; }
       .form-row { flex-direction: column; }
+      .item-thumb { width: 40px; height: 40px; }
     }
   </style>
 </head>
@@ -155,15 +235,80 @@
   <div class="topbar">
     <h1>Oddly<span style="color:var(--accent)">.</span>Board Admin</h1>
     <div class="topbar-actions">
-      <a href="index.html">View Board</a>
+      <a href="index.html" target="_blank">View Board ↗</a>
     </div>
   </div>
 
   <div class="admin-content">
+    <!-- TAGS MANAGEMENT -->
+    <div class="tags-section">
+      <h2>Tags</h2>
+      <div class="tags-list" id="tagsList"></div>
+      <div class="add-tag-row">
+        <input type="text" id="newTagName" placeholder="New tag name...">
+        <input type="color" id="newTagColor" value="#c8ff00">
+        <button class="btn btn-sm" onclick="addTag()">Add Tag</button>
+      </div>
+    </div>
+
     <div class="top-actions">
       <button class="btn" onclick="addCategory()">+ Category</button>
     </div>
     <div id="categoriesList"></div>
+  </div>
+
+  <!-- EDIT ITEM MODAL -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal">
+      <h2>Edit Item</h2>
+      <input type="hidden" id="edit-item-id">
+      <div class="form-row">
+        <div>
+          <label>Type</label>
+          <select id="edit-type" onchange="toggleEditFields(); updateEditPreview();">
+            <option value="embed">Embed (link)</option>
+            <option value="text">Text</option>
+            <option value="image">Image</option>
+          </select>
+        </div>
+        <div>
+          <label>Title (optional)</label>
+          <input type="text" id="edit-title" placeholder="Name this item">
+        </div>
+      </div>
+      <div id="edit-fields-embed">
+        <label>URL</label>
+        <input type="url" id="edit-url" placeholder="https://instagram.com/reel/..." oninput="updateEditPreview()">
+      </div>
+      <div id="edit-fields-text" style="display:none">
+        <label>Text</label>
+        <textarea id="edit-text" placeholder="Write something..." oninput="updateEditPreview()"></textarea>
+      </div>
+      <div id="edit-fields-image" style="display:none">
+        <label>Image</label>
+        <div class="file-upload-area" id="edit-upload"
+          onclick="document.getElementById('edit-file').click()"
+          ondragover="event.preventDefault(); this.classList.add('dragging')"
+          ondragleave="this.classList.remove('dragging')"
+          ondrop="handleEditDrop(event)">
+          Drop image here or click to upload
+          <input type="file" id="edit-file" accept="image/*" style="display:none" onchange="handleEditFileSelect(this)">
+          <div id="edit-preview-img"></div>
+        </div>
+      </div>
+      <div style="margin-top:0.75rem">
+        <label>Tags</label>
+        <div class="tag-selector" id="edit-tag-selector"></div>
+      </div>
+      <div class="live-preview" id="edit-live-preview" style="display:none">
+        <div class="live-preview-label">Preview</div>
+        <div class="live-preview-content" id="edit-preview-content"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-save" onclick="saveEditItem()">Save Changes</button>
+        <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -177,18 +322,102 @@
     let allCategories = [];
     let allSubcategories = [];
     let allItems = [];
+    let allTags = [];
+    let allItemTags = [];
+    let editPendingFile = null;
+    let pendingFiles = {};
 
     // ---- LOAD ----
     async function loadAll() {
-      const [c, s, i] = await Promise.all([
+      const [c, s, i, t, it] = await Promise.all([
         db.from('categories').select('*').order('sort_order'),
         db.from('subcategories').select('*').order('sort_order'),
-        db.from('items').select('*').order('sort_order')
+        db.from('items').select('*').order('sort_order'),
+        db.from('tags').select('*').order('name'),
+        db.from('item_tags').select('*')
       ]);
       allCategories = c.data || [];
       allSubcategories = s.data || [];
       allItems = i.data || [];
+      allTags = t.data || [];
+      allItemTags = it.data || [];
+      renderTags();
       renderAll();
+    }
+
+    // ---- TAGS ----
+    function renderTags() {
+      const container = document.getElementById('tagsList');
+      if (allTags.length === 0) {
+        container.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem">No tags yet</span>';
+        return;
+      }
+      container.innerHTML = allTags.map(tag => `
+        <span class="tag-pill" style="background:${esc(tag.color)}22;color:${esc(tag.color)}">
+          ${esc(tag.name)}
+          <span class="tag-delete" onclick="deleteTag('${tag.id}')">✕</span>
+        </span>
+      `).join('');
+    }
+
+    async function addTag() {
+      const name = document.getElementById('newTagName').value.trim();
+      const color = document.getElementById('newTagColor').value;
+      if (!name) { toast('Enter a tag name', true); return; }
+      const { error } = await db.from('tags').insert([{ name, color }]);
+      if (error) {
+        if (error.code === '23505') toast('Tag already exists', true);
+        else { toast('Error', true); console.error(error); }
+        return;
+      }
+      document.getElementById('newTagName').value = '';
+      toast('Tag added');
+      loadAll();
+    }
+
+    async function deleteTag(id) {
+      if (!confirm('Delete this tag?')) return;
+      await db.from('item_tags').delete().eq('tag_id', id);
+      await db.from('tags').delete().eq('id', id);
+      toast('Tag deleted');
+      loadAll();
+    }
+
+    function getItemTags(itemId) {
+      const tagIds = allItemTags.filter(it => it.item_id === itemId).map(it => it.tag_id);
+      return allTags.filter(t => tagIds.includes(t.id));
+    }
+
+    function renderTagSelector(containerId, selectedTagIds = []) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = allTags.map(tag => `
+        <span class="tag-option ${selectedTagIds.includes(tag.id) ? 'selected' : ''}"
+          style="background:${esc(tag.color)}22;color:${esc(tag.color)}"
+          data-tag-id="${tag.id}"
+          onclick="this.classList.toggle('selected')">
+          ${esc(tag.name)}
+        </span>
+      `).join('');
+      if (allTags.length === 0) {
+        container.innerHTML = '<span style="color:var(--text-muted);font-size:0.75rem">No tags available</span>';
+      }
+    }
+
+    function getSelectedTagIds(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return [];
+      return Array.from(container.querySelectorAll('.tag-option.selected')).map(el => el.dataset.tagId);
+    }
+
+    async function syncItemTags(itemId, tagIds) {
+      // Remove existing
+      await db.from('item_tags').delete().eq('item_id', itemId);
+      // Add new
+      if (tagIds.length > 0) {
+        const rows = tagIds.map(tagId => ({ item_id: itemId, tag_id: tagId }));
+        await db.from('item_tags').insert(rows);
+      }
     }
 
     // ---- RENDER ----
@@ -202,11 +431,13 @@
 
       container.innerHTML = allCategories.map(cat => {
         const subs = allSubcategories.filter(s => s.category_id === cat.id);
+        const catItemCount = allItems.filter(i => subs.some(s => s.id === i.subcategory_id)).length;
         return `
           <div class="category-block" data-cat-id="${cat.id}">
             <div class="category-header">
               <span class="drag-handle">⠿</span>
               <input type="text" value="${esc(cat.title)}" onchange="updateCategory('${cat.id}', this.value)">
+              <span class="item-count">${catItemCount} items</span>
               <div class="category-actions">
                 <button class="btn btn-sm" onclick="addSubcategory('${cat.id}')">+ Sub</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteCategory('${cat.id}')">✕</button>
@@ -221,31 +452,21 @@
         `;
       }).join('');
 
-      // Init drag & drop for categories
+      // Init sortable
       new Sortable(container, {
-        animation: 150,
-        handle: '.category-header .drag-handle',
-        ghostClass: 'sortable-ghost',
-        onEnd: (evt) => reorderCategories(evt)
+        animation: 150, handle: '.category-header .drag-handle',
+        ghostClass: 'sortable-ghost', onEnd: reorderCategories
       });
-
-      // Init drag & drop for each subcategories list
       document.querySelectorAll('.subcategories-list').forEach(el => {
         new Sortable(el, {
-          animation: 150,
-          handle: '.subcategory-header .drag-handle',
-          ghostClass: 'sortable-ghost',
-          onEnd: (evt) => reorderSubcategories(evt)
+          animation: 150, handle: '.subcategory-header .drag-handle',
+          ghostClass: 'sortable-ghost', onEnd: reorderSubcategories
         });
       });
-
-      // Init drag & drop for each items list
       document.querySelectorAll('.items-list').forEach(el => {
         new Sortable(el, {
-          animation: 150,
-          handle: '.drag-handle',
-          ghostClass: 'sortable-ghost',
-          onEnd: (evt) => reorderItems(evt)
+          animation: 150, handle: '.drag-handle',
+          ghostClass: 'sortable-ghost', onEnd: reorderItems
         });
       });
     }
@@ -257,6 +478,7 @@
           <div class="subcategory-header">
             <span class="drag-handle">⠿</span>
             <input type="text" value="${esc(sub.title)}" onchange="updateSubcategory('${sub.id}', this.value)">
+            <span class="item-count">${items.length}</span>
             <button class="btn btn-sm btn-outline" onclick="toggleAddItem('${sub.id}')">+ Item</button>
             <button class="btn btn-sm btn-danger" onclick="deleteSubcategory('${sub.id}')">✕</button>
           </div>
@@ -264,11 +486,11 @@
             <div class="items-list" data-sub-id="${sub.id}">
               ${items.map(item => renderItemRow(item)).join('')}
             </div>
-            <div class="add-item-form" id="form-${sub.id}">
+            <div class="item-form" id="form-${sub.id}">
               <div class="form-row">
                 <div>
                   <label>Type</label>
-                  <select id="type-${sub.id}" onchange="toggleItemFields('${sub.id}')">
+                  <select id="type-${sub.id}" onchange="toggleItemFields('${sub.id}'); updateAddPreview('${sub.id}');">
                     <option value="embed">Embed (link)</option>
                     <option value="text">Text</option>
                     <option value="image">Image</option>
@@ -281,11 +503,11 @@
               </div>
               <div id="fields-embed-${sub.id}">
                 <label>URL</label>
-                <input type="url" id="url-${sub.id}" placeholder="https://instagram.com/reel/...">
+                <input type="url" id="url-${sub.id}" placeholder="https://instagram.com/reel/..." oninput="updateAddPreview('${sub.id}')">
               </div>
               <div id="fields-text-${sub.id}" style="display:none">
                 <label>Text</label>
-                <textarea id="text-${sub.id}" placeholder="Write something..."></textarea>
+                <textarea id="text-${sub.id}" placeholder="Write something..." oninput="updateAddPreview('${sub.id}')"></textarea>
               </div>
               <div id="fields-image-${sub.id}" style="display:none">
                 <label>Image</label>
@@ -299,8 +521,16 @@
                   <div id="preview-${sub.id}"></div>
                 </div>
               </div>
-              <div style="margin-top:0.75rem; display:flex; gap:0.5rem;">
-                <button class="btn btn-sm" onclick="saveItem('${sub.id}')">Save</button>
+              <div style="margin-top:0.75rem">
+                <label>Tags</label>
+                <div class="tag-selector" id="add-tags-${sub.id}"></div>
+              </div>
+              <div class="live-preview" id="add-preview-${sub.id}" style="display:none">
+                <div class="live-preview-label">Preview</div>
+                <div class="live-preview-content" id="add-preview-content-${sub.id}"></div>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-sm" onclick="saveItem('${sub.id}')">Save Item</button>
                 <button class="btn btn-sm btn-outline" onclick="toggleAddItem('${sub.id}')">Cancel</button>
               </div>
             </div>
@@ -312,68 +542,152 @@
     function renderItemRow(item) {
       const typeLabel = item.type === 'embed' ? 'LINK' : item.type.toUpperCase();
       const preview = item.type === 'text'
-        ? (item.content || '').substring(0, 60) + ((item.content || '').length > 60 ? '...' : '')
-        : (item.content || '').substring(0, 50);
+        ? (item.content || '').substring(0, 50) + ((item.content || '').length > 50 ? '…' : '')
+        : (item.content || '').substring(0, 45);
+
+      let thumbHtml = '';
+      if (item.type === 'image' && item.content) {
+        thumbHtml = `<div class="item-thumb"><img src="${esc(item.content)}" alt="" loading="lazy"></div>`;
+      } else if (item.type === 'embed') {
+        thumbHtml = `<div class="item-thumb"><span class="thumb-icon">${getEmbedIcon(item.content)}</span></div>`;
+      } else {
+        thumbHtml = `<div class="item-thumb"><span class="thumb-icon">📝</span></div>`;
+      }
+
+      const itemTags = getItemTags(item.id);
+      const tagsHtml = itemTags.length > 0
+        ? `<div class="item-info-tags">${itemTags.map(t => `<span class="mini-tag" style="background:${esc(t.color)}22;color:${esc(t.color)}">${esc(t.name)}</span>`).join('')}</div>`
+        : '';
+
       return `
         <div class="item-row" data-item-id="${item.id}">
           <span class="drag-handle">⠿</span>
+          ${thumbHtml}
           <span class="item-type-badge">${typeLabel}</span>
           <div class="item-info">
             <div class="item-info-title">${esc(item.title || 'Untitled')}</div>
             <div class="item-info-content">${esc(preview)}</div>
+            ${tagsHtml}
           </div>
-          <button class="btn btn-sm btn-danger" onclick="deleteItem('${item.id}')">✕</button>
+          <div class="item-actions">
+            <button class="btn btn-sm btn-outline" onclick="openEditModal('${item.id}')">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteItem('${item.id}')">✕</button>
+          </div>
         </div>
       `;
     }
 
+    function getEmbedIcon(url) {
+      if (!url) return '🔗';
+      if (url.includes('instagram.com')) return '📸';
+      if (url.includes('youtube.com') || url.includes('youtu.be')) return '▶️';
+      if (url.includes('tiktok.com')) return '🎵';
+      if (url.includes('x.com') || url.includes('twitter.com')) return '𝕏';
+      if (url.includes('vimeo.com')) return '🎬';
+      return '🔗';
+    }
+
+    // ---- PREVIEWS ----
+    function updateAddPreview(subId) {
+      const type = document.getElementById(`type-${subId}`).value;
+      const previewBox = document.getElementById(`add-preview-${subId}`);
+      const previewContent = document.getElementById(`add-preview-content-${subId}`);
+
+      if (type === 'embed') {
+        const url = document.getElementById(`url-${subId}`).value.trim();
+        if (url) { previewContent.innerHTML = getEmbedPreviewHtml(url); previewBox.style.display = ''; }
+        else { previewBox.style.display = 'none'; }
+      } else if (type === 'text') {
+        const text = document.getElementById(`text-${subId}`).value.trim();
+        if (text) { previewContent.innerHTML = `<div class="preview-text">${esc(text)}</div>`; previewBox.style.display = ''; }
+        else { previewBox.style.display = 'none'; }
+      } else { previewBox.style.display = 'none'; }
+    }
+
+    function updateEditPreview() {
+      const type = document.getElementById('edit-type').value;
+      const previewBox = document.getElementById('edit-live-preview');
+      const previewContent = document.getElementById('edit-preview-content');
+
+      if (type === 'embed') {
+        const url = document.getElementById('edit-url').value.trim();
+        if (url) { previewContent.innerHTML = getEmbedPreviewHtml(url); previewBox.style.display = ''; }
+        else { previewBox.style.display = 'none'; }
+      } else if (type === 'text') {
+        const text = document.getElementById('edit-text').value.trim();
+        if (text) { previewContent.innerHTML = `<div class="preview-text">${esc(text)}</div>`; previewBox.style.display = ''; }
+        else { previewBox.style.display = 'none'; }
+      } else { previewBox.style.display = 'none'; }
+    }
+
+    function getEmbedPreviewHtml(url) {
+      if (!url) return '';
+      if (url.includes('instagram.com')) {
+        const match = url.match(/\/(p|reel|tv)\/([A-Za-z0-9_-]+)/);
+        if (match) return `<iframe src="https://www.instagram.com/${match[1]}/${match[2]}/embed/captioned/" allowfullscreen loading="lazy" style="background:#000"></iframe>`;
+      }
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        let vid = '';
+        if (url.includes('youtu.be/')) vid = url.split('youtu.be/')[1]?.split(/[?&#]/)[0];
+        else if (url.includes('/shorts/')) vid = url.split('/shorts/')[1]?.split(/[?&#]/)[0];
+        else { const m = url.match(/[?&]v=([A-Za-z0-9_-]+)/); vid = m?.[1]; }
+        if (vid) return `<iframe src="https://www.youtube.com/embed/${vid}" allowfullscreen loading="lazy"></iframe>`;
+      }
+      if (url.includes('tiktok.com')) {
+        const match = url.match(/\/video\/(\d+)/);
+        if (match) return `<iframe src="https://www.tiktok.com/embed/v2/${match[1]}" allowfullscreen loading="lazy"></iframe>`;
+      }
+      if (url.includes('vimeo.com')) {
+        const match = url.match(/vimeo\.com\/(\d+)/);
+        if (match) return `<iframe src="https://player.vimeo.com/video/${match[1]}" allowfullscreen loading="lazy"></iframe>`;
+      }
+      return `<div style="padding:1rem;text-align:center;color:var(--text-muted)"><a href="${esc(url)}" target="_blank" style="color:var(--accent);text-decoration:none">${esc(url)} ↗</a></div>`;
+    }
+
     // ---- CATEGORY CRUD ----
     async function addCategory() {
-      const order = allCategories.length;
-      const { error } = await db.from('categories').insert([{ title: 'New Category', sort_order: order }]);
-      if (error) { toast('Error creating category'); console.error(error); return; }
-      toast('Category added');
-      loadAll();
+      const { error } = await db.from('categories').insert([{ title: 'New Category', sort_order: allCategories.length }]);
+      if (error) { toast('Error', true); return; }
+      toast('Category added'); loadAll();
     }
-
     async function updateCategory(id, title) {
       await db.from('categories').update({ title }).eq('id', id);
+      toast('Saved');
     }
-
     async function deleteCategory(id) {
       if (!confirm('Delete this category and all its content?')) return;
+      const subs = allSubcategories.filter(s => s.category_id === id);
+      for (const sub of subs) await db.from('items').delete().eq('subcategory_id', sub.id);
+      await db.from('subcategories').delete().eq('category_id', id);
       await db.from('categories').delete().eq('id', id);
-      toast('Deleted');
-      loadAll();
+      toast('Deleted'); loadAll();
     }
 
     // ---- SUBCATEGORY CRUD ----
     async function addSubcategory(catId) {
       const subs = allSubcategories.filter(s => s.category_id === catId);
-      const order = subs.length;
-      const { error } = await db.from('subcategories').insert([{
-        category_id: catId, title: 'New Subcategory', sort_order: order
-      }]);
-      if (error) { toast('Error'); console.error(error); return; }
-      toast('Subcategory added');
-      loadAll();
+      const { error } = await db.from('subcategories').insert([{ category_id: catId, title: 'New Subcategory', sort_order: subs.length }]);
+      if (error) { toast('Error', true); return; }
+      toast('Subcategory added'); loadAll();
     }
-
     async function updateSubcategory(id, title) {
       await db.from('subcategories').update({ title }).eq('id', id);
+      toast('Saved');
     }
-
     async function deleteSubcategory(id) {
       if (!confirm('Delete this subcategory and all its items?')) return;
+      await db.from('items').delete().eq('subcategory_id', id);
       await db.from('subcategories').delete().eq('id', id);
-      toast('Deleted');
-      loadAll();
+      toast('Deleted'); loadAll();
     }
 
     // ---- ITEM CRUD ----
     function toggleAddItem(subId) {
       const form = document.getElementById(`form-${subId}`);
       form.classList.toggle('open');
+      if (form.classList.contains('open')) {
+        renderTagSelector(`add-tags-${subId}`);
+      }
     }
 
     function toggleItemFields(subId) {
@@ -383,16 +697,12 @@
       document.getElementById(`fields-image-${subId}`).style.display = type === 'image' ? '' : 'none';
     }
 
-    // Image upload handling
-    let pendingFiles = {};
-
     function handleFileSelect(input, subId) {
       const file = input.files[0];
       if (!file) return;
       pendingFiles[subId] = file;
       showImagePreview(file, subId);
     }
-
     function handleDrop(event, subId) {
       event.preventDefault();
       event.target.closest('.file-upload-area').classList.remove('dragging');
@@ -401,12 +711,13 @@
       pendingFiles[subId] = file;
       showImagePreview(file, subId);
     }
-
     function showImagePreview(file, subId) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        document.getElementById(`preview-${subId}`).innerHTML =
-          `<img src="${e.target.result}" alt="preview">`;
+        document.getElementById(`preview-${subId}`).innerHTML = `<img src="${e.target.result}" alt="preview">`;
+        const pb = document.getElementById(`add-preview-${subId}`);
+        const pc = document.getElementById(`add-preview-content-${subId}`);
+        if (pb && pc) { pc.innerHTML = `<img src="${e.target.result}" alt="preview">`; pb.style.display = ''; }
       };
       reader.readAsDataURL(file);
     }
@@ -427,73 +738,162 @@
 
       if (type === 'embed') {
         content = document.getElementById(`url-${subId}`).value.trim();
-        if (!content) { toast('URL is required'); return; }
+        if (!content) { toast('URL is required', true); return; }
       } else if (type === 'text') {
         content = document.getElementById(`text-${subId}`).value.trim();
-        if (!content) { toast('Text is required'); return; }
+        if (!content) { toast('Text is required', true); return; }
       } else if (type === 'image') {
         const file = pendingFiles[subId];
-        if (!file) { toast('Select an image'); return; }
-        try {
-          toast('Uploading...');
-          content = await uploadImage(file);
-          delete pendingFiles[subId];
-        } catch (err) {
-          console.error(err);
-          toast('Upload failed');
-          return;
-        }
+        if (!file) { toast('Select an image', true); return; }
+        try { toast('Uploading...'); content = await uploadImage(file); delete pendingFiles[subId]; }
+        catch (err) { console.error(err); toast('Upload failed', true); return; }
       }
 
       const items = allItems.filter(i => i.subcategory_id === subId);
-      const order = items.length;
+      const { data, error } = await db.from('items').insert([{
+        subcategory_id: subId, type, title, content, sort_order: items.length
+      }]).select();
 
-      const { error } = await db.from('items').insert([{
-        subcategory_id: subId, type, title, content, sort_order: order
-      }]);
+      if (error) { toast('Error saving', true); console.error(error); return; }
 
-      if (error) { toast('Error saving'); console.error(error); return; }
-      toast('Item added!');
-      loadAll();
+      // Save tags
+      if (data && data[0]) {
+        const tagIds = getSelectedTagIds(`add-tags-${subId}`);
+        if (tagIds.length > 0) await syncItemTags(data[0].id, tagIds);
+      }
+
+      toast('Item added!'); loadAll();
     }
 
     async function deleteItem(id) {
       if (!confirm('Delete this item?')) return;
+      await db.from('item_tags').delete().eq('item_id', id);
       await db.from('items').delete().eq('id', id);
-      toast('Deleted');
-      loadAll();
+      toast('Deleted'); loadAll();
     }
+
+    // ---- EDIT MODAL ----
+    function openEditModal(itemId) {
+      const item = allItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      document.getElementById('edit-item-id').value = item.id;
+      document.getElementById('edit-type').value = item.type;
+      document.getElementById('edit-title').value = item.title || '';
+      document.getElementById('edit-url').value = '';
+      document.getElementById('edit-text').value = '';
+      document.getElementById('edit-preview-img').innerHTML = '';
+      editPendingFile = null;
+
+      if (item.type === 'embed') document.getElementById('edit-url').value = item.content || '';
+      else if (item.type === 'text') document.getElementById('edit-text').value = item.content || '';
+      else if (item.type === 'image' && item.content)
+        document.getElementById('edit-preview-img').innerHTML = `<img src="${esc(item.content)}" alt="current">`;
+
+      toggleEditFields();
+      updateEditPreview();
+
+      // Render tag selector with current tags selected
+      const currentTagIds = allItemTags.filter(it => it.item_id === itemId).map(it => it.tag_id);
+      renderTagSelector('edit-tag-selector', currentTagIds);
+
+      document.getElementById('editModal').classList.add('open');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.remove('open');
+      editPendingFile = null;
+    }
+
+    function toggleEditFields() {
+      const type = document.getElementById('edit-type').value;
+      document.getElementById('edit-fields-embed').style.display = type === 'embed' ? '' : 'none';
+      document.getElementById('edit-fields-text').style.display = type === 'text' ? '' : 'none';
+      document.getElementById('edit-fields-image').style.display = type === 'image' ? '' : 'none';
+    }
+
+    function handleEditFileSelect(input) {
+      const file = input.files[0];
+      if (!file) return;
+      editPendingFile = file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('edit-preview-img').innerHTML = `<img src="${e.target.result}" alt="preview">`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleEditDrop(event) {
+      event.preventDefault();
+      event.target.closest('.file-upload-area').classList.remove('dragging');
+      const file = event.dataTransfer.files[0];
+      if (!file || !file.type.startsWith('image/')) return;
+      editPendingFile = file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('edit-preview-img').innerHTML = `<img src="${e.target.result}" alt="preview">`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function saveEditItem() {
+      const id = document.getElementById('edit-item-id').value;
+      const type = document.getElementById('edit-type').value;
+      const title = document.getElementById('edit-title').value.trim();
+      let content = '';
+
+      if (type === 'embed') {
+        content = document.getElementById('edit-url').value.trim();
+        if (!content) { toast('URL is required', true); return; }
+      } else if (type === 'text') {
+        content = document.getElementById('edit-text').value.trim();
+        if (!content) { toast('Text is required', true); return; }
+      } else if (type === 'image') {
+        if (editPendingFile) {
+          try { toast('Uploading...'); content = await uploadImage(editPendingFile); editPendingFile = null; }
+          catch (err) { console.error(err); toast('Upload failed', true); return; }
+        } else {
+          const existing = allItems.find(i => i.id === id);
+          content = existing?.content || '';
+          if (!content) { toast('Select an image', true); return; }
+        }
+      }
+
+      const { error } = await db.from('items').update({ type, title, content }).eq('id', id);
+      if (error) { toast('Error saving', true); console.error(error); return; }
+
+      // Sync tags
+      const tagIds = getSelectedTagIds('edit-tag-selector');
+      await syncItemTags(id, tagIds);
+
+      toast('Item updated!'); closeEditModal(); loadAll();
+    }
+
+    document.getElementById('editModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('editModal')) closeEditModal();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeEditModal(); });
 
     // ---- REORDER ----
     async function reorderCategories(evt) {
       const blocks = document.querySelectorAll('#categoriesList .category-block');
-      const updates = [];
-      blocks.forEach((el, i) => {
-        updates.push(db.from('categories').update({ sort_order: i }).eq('id', el.dataset.catId));
-      });
-      await Promise.all(updates);
+      await Promise.all(Array.from(blocks).map((el, i) =>
+        db.from('categories').update({ sort_order: i }).eq('id', el.dataset.catId)
+      ));
       loadAll();
     }
-
     async function reorderSubcategories(evt) {
-      const list = evt.from;
-      const blocks = list.querySelectorAll('.subcategory-block');
-      const updates = [];
-      blocks.forEach((el, i) => {
-        updates.push(db.from('subcategories').update({ sort_order: i }).eq('id', el.dataset.subId));
-      });
-      await Promise.all(updates);
+      const blocks = evt.from.querySelectorAll('.subcategory-block');
+      await Promise.all(Array.from(blocks).map((el, i) =>
+        db.from('subcategories').update({ sort_order: i }).eq('id', el.dataset.subId)
+      ));
       loadAll();
     }
-
     async function reorderItems(evt) {
-      const list = evt.from;
-      const rows = list.querySelectorAll('.item-row');
-      const updates = [];
-      rows.forEach((el, i) => {
-        updates.push(db.from('items').update({ sort_order: i }).eq('id', el.dataset.itemId));
-      });
-      await Promise.all(updates);
+      const rows = evt.from.querySelectorAll('.item-row');
+      await Promise.all(Array.from(rows).map((el, i) =>
+        db.from('items').update({ sort_order: i }).eq('id', el.dataset.itemId)
+      ));
       loadAll();
     }
 
@@ -502,12 +902,11 @@
       if (!str) return '';
       return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
-
-    function toast(msg) {
+    function toast(msg, isError = false) {
       const t = document.getElementById('toast');
       t.textContent = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2500);
+      t.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => t.className = 'toast', 2500);
     }
 
     // ---- INIT ----
