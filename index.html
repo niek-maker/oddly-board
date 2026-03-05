@@ -598,7 +598,6 @@
     let editMode = false;
     let addPendingFile = null;
     let editPendingFile = null;
-    let activeTypeFilter = 'all';
     let activeTagFilter = null;
     let activeCatFilter = null;
     let activeSubFilter = null;
@@ -679,25 +678,17 @@
         }
       }
 
-      // Row 3: Type + Tags
-      html += `<div class="filter-row">`;
-      html += `<span class="filter-label">Type</span>`;
-      html += `<span class="filter-pill ${activeTypeFilter === 'all' ? 'active' : ''}" onclick="setTypeFilter('all')">All</span>`;
-      html += `<span class="filter-pill ${activeTypeFilter === 'embed' ? 'active' : ''}" onclick="setTypeFilter('embed')">Links</span>`;
-      html += `<span class="filter-pill ${activeTypeFilter === 'text' ? 'active' : ''}" onclick="setTypeFilter('text')">Text</span>`;
-      html += `<span class="filter-pill ${activeTypeFilter === 'image' ? 'active' : ''}" onclick="setTypeFilter('image')">Images</span>`;
-      html += `<span class="filter-pill ${activeTypeFilter === 'video' ? 'active' : ''}" onclick="setTypeFilter('video')">Videos</span>`;
-
+      // Row 3: Tags
       if (allTags.length > 0) {
-        html += `<span class="filter-divider"></span>`;
-        html += `<span class="filter-label" style="min-width:auto">Tags</span>`;
+        html += `<div class="filter-row">`;
+        html += `<span class="filter-label">Tags</span>`;
         allTags.forEach(tag => {
           html += `<span class="tag-filter ${activeTagFilter === tag.id ? 'active' : ''}"
             style="background:${esc(tag.color)}22;color:${esc(tag.color)}"
             onclick="setTagFilter('${tag.id}')">${esc(tag.name)}</span>`;
         });
+        html += `</div>`;
       }
-      html += `</div>`;
 
       bar.innerHTML = html;
     }
@@ -710,11 +701,6 @@
     }
     function setSubFilter(subId) {
       activeSubFilter = activeSubFilter === subId ? null : subId;
-      renderFilterBar();
-      renderBoard();
-    }
-    function setTypeFilter(type) {
-      activeTypeFilter = type;
       renderFilterBar();
       renderBoard();
     }
@@ -750,7 +736,6 @@
           let items = allItems.filter(i => i.subcategory_id === sub.id);
 
           // Apply filters
-          if (activeTypeFilter !== 'all') items = items.filter(i => i.type === activeTypeFilter);
           if (activeTagFilter) {
             const tagItemIds = allItemTags.filter(it => it.tag_id === activeTagFilter).map(it => it.item_id);
             items = items.filter(i => tagItemIds.includes(i.id));
