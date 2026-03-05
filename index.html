@@ -568,6 +568,20 @@
           <button class="btn" style="padding:0.45rem 0.8rem;font-size:0.8rem" onclick="addTag()">Add</button>
         </div>
       </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0">
+
+      <div class="drive-sync">
+        <label>Google Drive Sync</label>
+        <p style="font-size:0.75rem;color:var(--text-muted);margin:0.3rem 0 0.6rem">Sync videos from a shared Google Drive folder into a "Rehearsal" category. Subfolders become subcategories.</p>
+        <div style="display:flex;flex-direction:column;gap:0.5rem">
+          <input type="text" id="driveApiKey" placeholder="Google Cloud API Key" style="font-size:0.82rem">
+          <input type="text" id="driveFolderUrl" placeholder="Google Drive folder URL" style="font-size:0.82rem">
+          <button class="btn" style="padding:0.5rem 1rem;font-size:0.82rem" onclick="syncFromDrive()" id="driveSyncBtn">Sync from Drive</button>
+        </div>
+        <div id="driveSyncStatus" style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem"></div>
+      </div>
+
       <div class="form-actions">
         <button class="btn btn-outline" onclick="closeSettings()">Close</button>
       </div>
@@ -1306,6 +1320,9 @@
     // ---- SETTINGS ----
     function openSettings() {
       renderSettingsTags();
+      document.getElementById('driveApiKey').value = localStorage.getItem('driveApiKey') || '';
+      document.getElementById('driveFolderUrl').value = localStorage.getItem('driveFolderUrl') || '';
+      document.getElementById('driveSyncStatus').textContent = '';
       document.getElementById('settingsModal').classList.add('open');
     }
     function closeSettings() {
@@ -1350,6 +1367,151 @@
       toast('Tag deleted');
       await loadAll();
       renderSettingsTags();
+    }
+
+    // ---- GOOGLE DRIVE SYNC ----
+    async function syncFromDrive() {
+      const apiKey = document.getElementById('driveApiKey').value.trim();
+      const folderUrl = document.getElementById('driveFolderUrl').value.trim();
+      const statusEl = document.getElementById('driveSyncStatus');
+      const btn = document.getElementById('driveSyncBtn');
+
+      if (!apiKey || !folderUrl) { toast('Enter API key and folder URL', true); return; }
+
+      // Save settings
+      localStorage.setItem('driveApiKey', apiKey);
+      localStorage.setItem('driveFolderUrl', folderUrl);
+
+      // Parse folder ID from URL
+      const folderMatch = folderUrl.match(/folders\/([A-Za-z0-9_-]+)/);
+      if (!folderMatch) { toast('Invalid Google Drive folder URL', true); return; }
+      const rootFolderId = folderMatch[1];
+
+      btn.disabled = true;
+      btn.textContent = 'Syncing...';
+      statusEl.textContent = 'Connecting to Google Drive...';
+
+      try {
+        // Helper: list files in a Drive folder
+        async function listDriveFiles(folderId) {
+          const params = new URLSearchParams({
+            q: `'${folderId}' in parents and trashed=false`,
+            key: apiKey,
+            fields: 'files(id,name,mimeType)',
+            pageSize: '1000'
+          });
+          const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`);
+          if (!res.ok) throw new Error(`Drive API error: ${res.status} ${res.statusText}`);
+          const data = await res.json();
+          return data.files || [];
+        }
+
+        // 1. List root folder contents
+        statusEl.textContent = 'Listing folder contents...';
+        const rootFiles = await listDriveFiles(rootFolderId);
+
+        // Separate folders and video files
+        const subfolders = rootFiles.filter(f => f.mimeType === 'application/vnd.google-apps.folder');
+        const rootVideos = rootFiles.filter(f => f.mimeType.startsWith('video/'));
+
+        // 2. List subfolder contents
+        const folderVideos = [];
+        for (const folder of subfolders) {
+          statusEl.textContent = `Scanning subfolder: ${folder.name}...`;
+          const files = await listDriveFiles(folder.id);
+          const videos = files.filter(f => f.mimeType.startsWith('video/'));
+          folderVideos.push({ folder, videos });
+        }
+
+        // 3. Ensure "Rehearsal" category exists
+        statusEl.textContent = 'Setting up categories...';
+        await loadAll();
+        let rehearsalCat = allCategories.find(c => c.title.toLowerCase() === 'rehearsal');
+        if (!rehearsalCat) {
+          const { data } = await db.from('categories').insert([{ title: 'Rehearsal', sort_order: allCategories.length }]).select();
+          rehearsalCat = data[0];
+        }
+
+        // 4. Ensure "rehearsal" tag exists
+        let rehearsalTag = allTags.find(t => t.name.toLowerCase() === 'rehearsal');
+        if (!rehearsalTag) {
+          const { data } = await db.from('tags').insert([{ name: 'rehearsal', color: '#A855F7' }]).select();
+          rehearsalTag = data[0];
+        }
+
+        // 5. Helper: ensure subcategory exists
+        await loadAll(); // refresh after inserts
+        async function ensureSubcategory(name) {
+          let sub = allSubcategories.find(s => s.category_id === rehearsalCat.id && s.title.toLowerCase() === name.toLowerCase());
+          if (!sub) {
+            const existingSubs = allSubcategories.filter(s => s.category_id === rehearsalCat.id);
+            const { data } = await db.from('subcategories').insert([{
+              title: name, category_id: rehearsalCat.id, sort_order: existingSubs.length
+            }]).select();
+            sub = data[0];
+            allSubcategories.push(sub);
+          }
+          return sub;
+        }
+
+        // 6. Sync videos
+        let added = 0;
+        const existingUrls = allItems.map(i => i.content);
+
+        // Root folder videos → subcategory "General"
+        if (rootVideos.length > 0) {
+          const generalSub = await ensureSubcategory('General');
+          for (const video of rootVideos) {
+            const driveUrl = `https://drive.google.com/file/d/${video.id}/view`;
+            if (existingUrls.includes(driveUrl)) continue;
+            statusEl.textContent = `Adding: ${video.name}...`;
+            const title = video.name.replace(/\.[^.]+$/, '');
+            const { data } = await db.from('items').insert([{
+              subcategory_id: generalSub.id, type: 'embed', title, content: driveUrl,
+              sort_order: added
+            }]).select();
+            if (data && data[0]) {
+              await db.from('item_tags').insert([{ item_id: data[0].id, tag_id: rehearsalTag.id }]);
+              added++;
+            }
+          }
+        }
+
+        // Subfolder videos → subcategory = folder name
+        for (const { folder, videos } of folderVideos) {
+          if (videos.length === 0) continue;
+          const sub = await ensureSubcategory(folder.name);
+          for (const video of videos) {
+            const driveUrl = `https://drive.google.com/file/d/${video.id}/view`;
+            if (existingUrls.includes(driveUrl)) continue;
+            statusEl.textContent = `Adding: ${video.name}...`;
+            const title = video.name.replace(/\.[^.]+$/, '');
+            const { data } = await db.from('items').insert([{
+              subcategory_id: sub.id, type: 'embed', title, content: driveUrl,
+              sort_order: added
+            }]).select();
+            if (data && data[0]) {
+              await db.from('item_tags').insert([{ item_id: data[0].id, tag_id: rehearsalTag.id }]);
+              added++;
+            }
+          }
+        }
+
+        statusEl.textContent = added > 0 ? `Done! ${added} video(s) added.` : 'All videos already synced.';
+        toast(added > 0 ? `${added} video(s) synced` : 'Already up to date');
+        await loadAll();
+        renderBoard();
+        renderFilterBar();
+        renderSettingsTags();
+
+      } catch (err) {
+        console.error('Drive sync error:', err);
+        statusEl.textContent = `Error: ${err.message}`;
+        toast('Sync failed', true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sync from Drive';
+      }
     }
 
     // ---- FILE UPLOAD ----
