@@ -970,8 +970,8 @@
       const catId = document.getElementById('add-category').value;
       const sel = document.getElementById('add-subcategory');
       const subs = allSubcategories.filter(s => s.category_id === catId);
-      sel.innerHTML = subs.map(s => `<option value="${s.id}">${esc(s.title)}</option>`).join('');
-      if (subs.length === 0) sel.innerHTML = '<option value="">-- No subcategories --</option>';
+      sel.innerHTML = '<option value="">— General —</option>' +
+        subs.map(s => `<option value="${s.id}">${esc(s.title)}</option>`).join('');
     }
 
     function showNewCategoryRow() {
@@ -1091,9 +1091,21 @@
       } else pb.style.display = 'none';
     }
 
+    async function getOrCreateGeneralSub(catId) {
+      let general = allSubcategories.find(s => s.category_id === catId && s.title === 'General');
+      if (general) return general.id;
+      const { data } = await db.from('subcategories').insert([{ category_id: catId, title: 'General', sort_order: 0 }]).select();
+      if (data && data[0]) { allSubcategories.push(data[0]); return data[0].id; }
+      return null;
+    }
+
     async function saveAddItem() {
-      const subId = document.getElementById('add-subcategory').value;
-      if (!subId) { toast('Select a subcategory', true); return; }
+      let subId = document.getElementById('add-subcategory').value;
+      if (!subId) {
+        const catId = document.getElementById('add-category').value;
+        subId = await getOrCreateGeneralSub(catId);
+        if (!subId) { toast('Error creating subcategory', true); return; }
+      }
 
       const type = document.getElementById('add-type').value;
       const title = document.getElementById('add-title').value.trim();
@@ -1187,9 +1199,10 @@
       const catId = document.getElementById('edit-category').value;
       const subs = allSubcategories.filter(s => s.category_id === catId);
       const subSelect = document.getElementById('edit-subcategory');
-      subSelect.innerHTML = subs.map(s =>
-        `<option value="${s.id}" ${s.id === selectedSubId ? 'selected' : ''}>${esc(s.title)}</option>`
-      ).join('');
+      subSelect.innerHTML = `<option value="" ${!selectedSubId ? 'selected' : ''}>— General —</option>` +
+        subs.map(s =>
+          `<option value="${s.id}" ${s.id === selectedSubId ? 'selected' : ''}>${esc(s.title)}</option>`
+        ).join('');
     }
 
     function toggleEditFields() {
@@ -1290,7 +1303,12 @@
         }
       }
 
-      const subcategory_id = document.getElementById('edit-subcategory').value;
+      let subcategory_id = document.getElementById('edit-subcategory').value;
+      if (!subcategory_id) {
+        const catId = document.getElementById('edit-category').value;
+        subcategory_id = await getOrCreateGeneralSub(catId);
+        if (!subcategory_id) { toast('Error creating subcategory', true); return; }
+      }
       const scene_id = document.getElementById('edit-scene').value || null;
       const { error } = await db.from('items').update({ type, title, content, subcategory_id, scene_id }).eq('id', id);
       if (error) { toast('Error saving', true); console.error(error); return; }
