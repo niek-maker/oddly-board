@@ -1401,6 +1401,10 @@
           <svg viewBox="0 0 24 24" width="32" height="32" fill="#fff"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           <span style="color:#8899a6;font-size:0.7rem;">@${esc(match[1])}</span></div>`;
       }
+      if (url.includes('drive.google.com')) {
+        const match = url.match(/\/d\/([A-Za-z0-9_-]+)/);
+        if (match) return `<iframe src="https://drive.google.com/file/d/${match[1]}/preview" allow="autoplay" allowfullscreen loading="lazy"></iframe>`;
+      }
       return `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:0.8rem;padding:1rem;text-align:center;word-break:break-all;">${esc(url)}</div>`;
     }
 
@@ -1431,6 +1435,10 @@
           <svg viewBox="0 0 24 24" width="48" height="48" fill="#fff"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           <span style="color:#8899a6;font-size:0.95rem;">@${esc(match[1])}</span>
           <a href="${esc(url)}" target="_blank" rel="noopener" style="background:var(--accent);color:#fff;padding:0.6rem 1.5rem;border-radius:10px;text-decoration:none;font-weight:600;font-size:0.9rem;">View on X</a></div>`;
+      }
+      if (url.includes('drive.google.com')) {
+        const match = url.match(/\/d\/([A-Za-z0-9_-]+)/);
+        if (match) return `<iframe src="https://drive.google.com/file/d/${match[1]}/preview" allow="autoplay" allowfullscreen loading="lazy"></iframe>`;
       }
       return `<div style="padding:1rem;text-align:center;color:var(--text-muted)"><a href="${esc(url)}" target="_blank" style="color:var(--accent);text-decoration:none">${esc(url)}</a></div>`;
     }
