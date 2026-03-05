@@ -401,6 +401,10 @@
   <div class="modal-overlay" id="addModal">
     <div class="modal">
       <h2 id="addModalTitle">Add Content</h2>
+      <div style="margin-bottom:0.75rem">
+        <label>Scene</label>
+        <select id="add-scene"></select>
+      </div>
       <div class="form-row">
         <div>
           <label>Category</label>
@@ -540,6 +544,10 @@
           <div id="edit-video-preview"></div>
         </div>
       </div>
+      <div style="margin-top:0.75rem">
+        <label>Scene</label>
+        <select id="edit-scene"></select>
+      </div>
       <div class="form-row" style="margin-top:0.75rem">
         <div>
           <label>Category</label>
@@ -576,6 +584,18 @@
           <input type="text" id="newTagName" placeholder="New tag...">
           <input type="color" id="newTagColor" value="#A855F7">
           <button class="btn" style="padding:0.45rem 0.8rem;font-size:0.8rem" onclick="addTag()">Add</button>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0">
+
+      <div class="scenes-manage">
+        <label>Scenes</label>
+        <div class="tags-list" id="settingsScenesList"></div>
+        <div class="add-tag-row" style="margin-top:0.5rem">
+          <input type="text" id="newSceneName" placeholder="New scene...">
+          <input type="color" id="newSceneColor" value="#A855F7">
+          <button class="btn" style="padding:0.45rem 0.8rem;font-size:0.8rem" onclick="addScene()">Add</button>
         </div>
       </div>
 
@@ -618,13 +638,14 @@
 
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    let allCategories = [], allSubcategories = [], allItems = [], allTags = [], allItemTags = [];
+    let allCategories = [], allSubcategories = [], allItems = [], allTags = [], allItemTags = [], allScenes = [];
     let editMode = false;
     let addPendingFile = null;
     let editPendingFile = null;
     let activeTagFilter = null;
     let activeCatFilter = null;
     let activeSubFilter = null;
+    let activeSceneFilter = null;
     let currentLightboxItemId = null;
 
     // ---- LOGIN ----
@@ -656,18 +677,20 @@
 
     // ---- LOAD ----
     async function loadAll() {
-      const [c, s, i, t, it] = await Promise.all([
+      const [c, s, i, t, it, sc] = await Promise.all([
         db.from('categories').select('*').order('sort_order'),
         db.from('subcategories').select('*').order('sort_order'),
         db.from('items').select('*').order('sort_order'),
         db.from('tags').select('*').order('name'),
-        db.from('item_tags').select('*')
+        db.from('item_tags').select('*'),
+        db.from('scenes').select('*').order('sort_order')
       ]);
       allCategories = c.data || [];
       allSubcategories = s.data || [];
       allItems = i.data || [];
       allTags = t.data || [];
       allItemTags = it.data || [];
+      allScenes = sc.data || [];
       renderFilterBar();
       renderBoard();
     }
@@ -702,7 +725,18 @@
         }
       }
 
-      // Row 3: Tags
+      // Row 3: Scene filter
+      if (allScenes.length > 0) {
+        html += `<div class="filter-row">`;
+        html += `<span class="filter-label">Scene</span>`;
+        html += `<span class="filter-pill ${activeSceneFilter === null ? 'active' : ''}" onclick="setSceneFilter(null)">All</span>`;
+        allScenes.forEach(scene => {
+          html += `<span class="filter-pill ${activeSceneFilter === scene.id ? 'active' : ''}" style="border-color:${esc(scene.color)}" onclick="setSceneFilter('${scene.id}')">${esc(scene.name)}</span>`;
+        });
+        html += `</div>`;
+      }
+
+      // Row 4: Tags
       if (allTags.length > 0) {
         html += `<div class="filter-row">`;
         html += `<span class="filter-label">Tags</span>`;
@@ -733,6 +767,11 @@
       renderFilterBar();
       renderBoard();
     }
+    function setSceneFilter(sceneId) {
+      activeSceneFilter = activeSceneFilter === sceneId ? null : sceneId;
+      renderFilterBar();
+      renderBoard();
+    }
 
     // ---- BOARD RENDER ----
     function renderBoard() {
@@ -760,6 +799,9 @@
           let items = allItems.filter(i => i.subcategory_id === sub.id);
 
           // Apply filters
+          if (activeSceneFilter) {
+            items = items.filter(i => i.scene_id === activeSceneFilter);
+          }
           if (activeTagFilter) {
             const tagItemIds = allItemTags.filter(it => it.tag_id === activeTagFilter).map(it => it.item_id);
             items = items.filter(i => tagItemIds.includes(i.id));
@@ -907,6 +949,10 @@
       document.getElementById('newSubcategoryRow').style.display = 'none';
       toggleAddFields();
       populateCategorySelect();
+      // Populate scene select
+      const addSceneSel = document.getElementById('add-scene');
+      addSceneSel.innerHTML = '<option value="">— No scene —</option>' +
+        allScenes.map(sc => `<option value="${sc.id}">${esc(sc.name)}</option>`).join('');
       renderTagSelector('add-tag-selector');
       document.getElementById('addModal').classList.add('open');
     }
@@ -1069,9 +1115,10 @@
         catch (err) { console.error(err); toast('Upload failed', true); return; }
       }
 
+      const sceneId = document.getElementById('add-scene').value || null;
       const items = allItems.filter(i => i.subcategory_id === subId);
       const { data, error } = await db.from('items').insert([{
-        subcategory_id: subId, type, title, content, sort_order: items.length
+        subcategory_id: subId, type, title, content, sort_order: items.length, scene_id: sceneId
       }]).select();
 
       if (error) { toast('Error saving', true); console.error(error); return; }
@@ -1110,6 +1157,11 @@
 
       toggleEditFields();
       updateEditPreview();
+
+      // Populate scene dropdown
+      const editSceneSel = document.getElementById('edit-scene');
+      editSceneSel.innerHTML = '<option value="">— No scene —</option>' +
+        allScenes.map(sc => `<option value="${sc.id}" ${sc.id === item.scene_id ? 'selected' : ''}>${esc(sc.name)}</option>`).join('');
 
       // Populate category/subcategory dropdowns
       const sub = allSubcategories.find(s => s.id === item.subcategory_id);
@@ -1239,7 +1291,8 @@
       }
 
       const subcategory_id = document.getElementById('edit-subcategory').value;
-      const { error } = await db.from('items').update({ type, title, content, subcategory_id }).eq('id', id);
+      const scene_id = document.getElementById('edit-scene').value || null;
+      const { error } = await db.from('items').update({ type, title, content, subcategory_id, scene_id }).eq('id', id);
       if (error) { toast('Error saving', true); console.error(error); return; }
 
       const tagIds = getSelectedTagIds('edit-tag-selector');
@@ -1350,6 +1403,7 @@
     // ---- SETTINGS ----
     function openSettings() {
       renderSettingsTags();
+      renderSettingsScenes();
       document.getElementById('driveApiKey').value = localStorage.getItem('driveApiKey') || '';
       document.getElementById('driveFolderUrl').value = localStorage.getItem('driveFolderUrl') || '';
       document.getElementById('driveSyncStatus').textContent = '';
@@ -1397,6 +1451,46 @@
       toast('Tag deleted');
       await loadAll();
       renderSettingsTags();
+    }
+
+    // ---- SCENES CRUD ----
+    function renderSettingsScenes() {
+      const container = document.getElementById('settingsScenesList');
+      if (allScenes.length === 0) {
+        container.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem">No scenes yet</span>';
+        return;
+      }
+      container.innerHTML = allScenes.map(scene => `
+        <span class="tag-pill" style="background:${esc(scene.color)}22;color:${esc(scene.color)}">
+          ${esc(scene.name)}
+          <span class="tag-x" onclick="deleteScene('${scene.id}')">&#10005;</span>
+        </span>
+      `).join('');
+    }
+
+    async function addScene() {
+      const name = document.getElementById('newSceneName').value.trim();
+      const color = document.getElementById('newSceneColor').value;
+      if (!name) { toast('Enter a scene name', true); return; }
+      const { error } = await db.from('scenes').insert([{ name, color, sort_order: allScenes.length }]);
+      if (error) {
+        if (error.code === '23505') toast('Scene already exists', true);
+        else { toast('Error', true); console.error(error); }
+        return;
+      }
+      document.getElementById('newSceneName').value = '';
+      toast('Scene added');
+      await loadAll();
+      renderSettingsScenes();
+    }
+
+    async function deleteScene(id) {
+      if (!confirm('Delete this scene?')) return;
+      await db.from('items').update({ scene_id: null }).eq('scene_id', id);
+      await db.from('scenes').delete().eq('id', id);
+      toast('Scene deleted');
+      await loadAll();
+      renderSettingsScenes();
     }
 
     // ---- GOOGLE DRIVE SYNC ----
