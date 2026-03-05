@@ -540,6 +540,16 @@
           <div id="edit-video-preview"></div>
         </div>
       </div>
+      <div class="form-row" style="margin-top:0.75rem">
+        <div>
+          <label>Category</label>
+          <select id="edit-category" onchange="updateEditSubcategories()"></select>
+        </div>
+        <div>
+          <label>Subcategory</label>
+          <select id="edit-subcategory"></select>
+        </div>
+      </div>
       <div style="margin-top:0.75rem">
         <label>Tags</label>
         <div class="tag-selector" id="edit-tag-selector"></div>
@@ -1101,6 +1111,16 @@
       toggleEditFields();
       updateEditPreview();
 
+      // Populate category/subcategory dropdowns
+      const sub = allSubcategories.find(s => s.id === item.subcategory_id);
+      const catId = sub ? sub.category_id : '';
+
+      const catSelect = document.getElementById('edit-category');
+      catSelect.innerHTML = allCategories.map(c =>
+        `<option value="${c.id}" ${c.id === catId ? 'selected' : ''}>${esc(c.title)}</option>`
+      ).join('');
+      updateEditSubcategories(item.subcategory_id);
+
       const currentTagIds = allItemTags.filter(it => it.item_id === itemId).map(it => it.tag_id);
       renderTagSelector('edit-tag-selector', currentTagIds);
 
@@ -1109,6 +1129,15 @@
     function closeEditModal() {
       document.getElementById('editModal').classList.remove('open');
       editPendingFile = null;
+    }
+
+    function updateEditSubcategories(selectedSubId) {
+      const catId = document.getElementById('edit-category').value;
+      const subs = allSubcategories.filter(s => s.category_id === catId);
+      const subSelect = document.getElementById('edit-subcategory');
+      subSelect.innerHTML = subs.map(s =>
+        `<option value="${s.id}" ${s.id === selectedSubId ? 'selected' : ''}>${esc(s.title)}</option>`
+      ).join('');
     }
 
     function toggleEditFields() {
@@ -1209,7 +1238,8 @@
         }
       }
 
-      const { error } = await db.from('items').update({ type, title, content }).eq('id', id);
+      const subcategory_id = document.getElementById('edit-subcategory').value;
+      const { error } = await db.from('items').update({ type, title, content, subcategory_id }).eq('id', id);
       if (error) { toast('Error saving', true); console.error(error); return; }
 
       const tagIds = getSelectedTagIds('edit-tag-selector');
