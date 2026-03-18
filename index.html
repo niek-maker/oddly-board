@@ -1508,7 +1508,9 @@
         if (!subcategory_id) { toast('Error creating subcategory', true); return; }
       }
       const scene_id = document.getElementById('edit-scene').value || null;
-      const { error } = await db.from('items').update({ type, title, content, subcategory_id, scene_id }).eq('id', id);
+      const updateRow = { type, title, content, subcategory_id };
+      if (scenesEnabled) updateRow.scene_id = scene_id;
+      const { error } = await db.from('items').update(updateRow).eq('id', id);
       if (error) { toast('Error saving', true); console.error(error); return; }
 
       const tagIds = getSelectedTagIds('edit-tag-selector');
