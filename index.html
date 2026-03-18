@@ -707,6 +707,7 @@
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let allCategories = [], allSubcategories = [], allItems = [], allTags = [], allItemTags = [], allScenes = [];
+    let scenesEnabled = false; // true once scenes table + scene_id column exist
     let editMode = false;
     let addPendingFile = null;
     let editPendingFile = null;
@@ -758,6 +759,8 @@
       allItems = i.data || [];
       allTags = t.data || [];
       allItemTags = it.data || [];
+      // Check if scenes table exists (no error = exists)
+      scenesEnabled = !sc.error;
       allScenes = sc.data || [];
       renderFilterBar();
       renderBoard();
@@ -793,14 +796,16 @@
         }
       }
 
-      // Row 3: Scene filter (always visible)
-      html += `<div class="filter-row">`;
-      html += `<span class="filter-label">Scene</span>`;
-      html += `<span class="filter-pill ${activeSceneFilter === null ? 'active' : ''}" onclick="setSceneFilter(null)">All</span>`;
-      allScenes.forEach(scene => {
-        html += `<span class="filter-pill ${activeSceneFilter === scene.id ? 'active' : ''}" style="border-color:${esc(scene.color)}" onclick="setSceneFilter('${scene.id}')">${esc(scene.name)}</span>`;
-      });
-      html += `</div>`;
+      // Row 3: Scene filter (only show when scenes table exists)
+      if (scenesEnabled) {
+        html += `<div class="filter-row">`;
+        html += `<span class="filter-label">Scene</span>`;
+        html += `<span class="filter-pill ${activeSceneFilter === null ? 'active' : ''}" onclick="setSceneFilter(null)">All</span>`;
+        allScenes.forEach(scene => {
+          html += `<span class="filter-pill ${activeSceneFilter === scene.id ? 'active' : ''}" style="border-color:${esc(scene.color)}" onclick="setSceneFilter('${scene.id}')">${esc(scene.name)}</span>`;
+        });
+        html += `</div>`;
+      }
 
       // Row 4: Tags
       if (allTags.length > 0) {
@@ -1233,9 +1238,9 @@
 
       const sceneId = document.getElementById('add-scene').value || null;
       const items = allItems.filter(i => i.subcategory_id === subId);
-      const { data, error } = await db.from('items').insert([{
-        subcategory_id: subId, type, title, content, sort_order: items.length, scene_id: sceneId
-      }]).select();
+      const row = { subcategory_id: subId, type, title, content, sort_order: items.length };
+      if (scenesEnabled && sceneId) row.scene_id = sceneId;
+      const { data, error } = await db.from('items').insert([row]).select();
 
       if (error) { toast('Error saving', true); console.error(error); return; }
 
@@ -1318,10 +1323,9 @@
         progBar.style.width = pct + '%';
         progText.textContent = `Importing ${i + 1} of ${urls.length}...`;
 
-        const { data, error } = await db.from('items').insert([{
-          subcategory_id: subId, type: 'embed', title: '', content: url,
-          sort_order: baseOrder + i, scene_id: sceneId
-        }]).select();
+        const row = { subcategory_id: subId, type: 'embed', title: '', content: url, sort_order: baseOrder + i };
+        if (scenesEnabled && sceneId) row.scene_id = sceneId;
+        const { data, error } = await db.from('items').insert([row]).select();
 
         if (error) { console.error('Bulk insert error:', error, 'URL:', url, 'subId:', subId); failed++; continue; }
         success++;
