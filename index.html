@@ -1881,8 +1881,8 @@
     function getEmbedHtml(url) {
       if (!url) return '';
       if (url.includes('instagram.com')) {
-        const match = url.match(/\/(p|reel|tv)\/([A-Za-z0-9_-]+)/);
-        if (match) return `<iframe src="https://www.instagram.com/${match[1]}/${match[2]}/embed/captioned/" allowfullscreen loading="lazy"></iframe>`;
+        const match = url.match(/\/(p|reels?|tv)\/([A-Za-z0-9_-]+)/);
+        if (match) { const type = match[1] === 'reels' ? 'reel' : match[1]; return `<iframe src="https://www.instagram.com/${type}/${match[2]}/embed/captioned/" allowfullscreen loading="lazy"></iframe>`; }
       }
       if (url.includes('youtube.com') || url.includes('youtu.be')) {
         let vid = '';
@@ -1915,8 +1915,8 @@
     function getEmbedPreviewHtml(url) {
       if (!url) return '';
       if (url.includes('instagram.com')) {
-        const match = url.match(/\/(p|reel|tv)\/([A-Za-z0-9_-]+)/);
-        if (match) return `<iframe src="https://www.instagram.com/${match[1]}/${match[2]}/embed/captioned/" allowfullscreen loading="lazy" style="background:#000"></iframe>`;
+        const match = url.match(/\/(p|reels?|tv)\/([A-Za-z0-9_-]+)/);
+        if (match) { const type = match[1] === 'reels' ? 'reel' : match[1]; return `<iframe src="https://www.instagram.com/${type}/${match[2]}/embed/captioned/" allowfullscreen loading="lazy" style="background:#000"></iframe>`; }
       }
       if (url.includes('youtube.com') || url.includes('youtu.be')) {
         let vid = '';
