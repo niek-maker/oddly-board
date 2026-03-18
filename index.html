@@ -199,6 +199,15 @@
     }
     .edit-mode .edit-delete-btn { display: inline-flex; }
     .edit-delete-btn:hover { color: var(--danger); }
+    .drag-handle {
+      display: none; cursor: grab; color: var(--text-muted); font-size: 1.1rem;
+      padding: 0 0.2rem; user-select: none; opacity: 0.5; transition: opacity 0.15s;
+    }
+    .drag-handle:hover { opacity: 1; }
+    .drag-handle:active { cursor: grabbing; }
+    .edit-mode .drag-handle { display: inline-flex; }
+    .category.sortable-ghost { opacity: 0.4; }
+    .subcategory.sortable-ghost { opacity: 0.4; }
 
     /* ---- FLOATING ACTION BUTTON ---- */
     .fab {
@@ -211,6 +220,18 @@
     }
     .fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(168,85,247,0.45); }
     .fab:active { transform: scale(0.95); }
+
+    /* ---- ADD MODE TABS ---- */
+    .add-mode-tabs {
+      display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border);
+    }
+    .add-mode-tab {
+      flex: 1; padding: 0.6rem 1rem; background: none; border: none; border-bottom: 2px solid transparent;
+      color: var(--text-muted); font-family: inherit; font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .add-mode-tab:hover { color: var(--text); }
+    .add-mode-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
     /* ---- MODALS ---- */
     .modal-overlay {
@@ -400,94 +421,141 @@
   <!-- ADD ITEM MODAL (from floating button) -->
   <div class="modal-overlay" id="addModal">
     <div class="modal">
-      <h2 id="addModalTitle">Add Content</h2>
-      <div style="margin-bottom:0.75rem">
-        <label>Scene</label>
-        <select id="add-scene"></select>
+      <div class="add-mode-tabs">
+        <button class="add-mode-tab active" onclick="switchAddMode('single')">Add Single</button>
+        <button class="add-mode-tab" onclick="switchAddMode('bulk')">Bulk Import</button>
       </div>
-      <div class="form-row">
-        <div>
-          <label>Category</label>
-          <select id="add-category" onchange="populateSubcategorySelect()">
-          </select>
+
+      <!-- SINGLE ADD MODE -->
+      <div id="addSingleMode">
+        <div style="margin-bottom:0.75rem">
+          <label>Scene</label>
+          <select id="add-scene"></select>
         </div>
-        <div>
-          <label>Subcategory</label>
-          <select id="add-subcategory">
-          </select>
+        <div class="form-row">
+          <div>
+            <label>Category</label>
+            <select id="add-category" onchange="populateSubcategorySelect()">
+            </select>
+          </div>
+          <div>
+            <label>Subcategory</label>
+            <select id="add-subcategory">
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
+          <button class="btn btn-outline" style="font-size:0.75rem;padding:0.3rem 0.6rem;" onclick="showNewCategoryRow()">+ New Category</button>
+          <button class="btn btn-outline" style="font-size:0.75rem;padding:0.3rem 0.6rem;" onclick="showNewSubcategoryRow()">+ New Subcategory</button>
+        </div>
+        <div id="newCategoryRow" class="new-inline-row" style="display:none;margin-bottom:0.75rem;">
+          <input type="text" id="newCatName" placeholder="Category name...">
+          <button class="btn" onclick="createCategoryInline()">Create</button>
+        </div>
+        <div id="newSubcategoryRow" class="new-inline-row" style="display:none;margin-bottom:0.75rem;">
+          <input type="text" id="newSubName" placeholder="Subcategory name...">
+          <button class="btn" onclick="createSubcategoryInline()">Create</button>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin-bottom:0.75rem;">
+        <div class="form-row">
+          <div>
+            <label>Type</label>
+            <select id="add-type" onchange="toggleAddFields(); updateAddPreview();">
+              <option value="embed">Embed (link)</option>
+              <option value="text">Text</option>
+              <option value="image">Image</option>
+              <option value="video">Video</option>
+            </select>
+          </div>
+          <div>
+            <label>Title (optional)</label>
+            <input type="text" id="add-title" placeholder="Name this item">
+          </div>
+        </div>
+        <div id="add-fields-embed">
+          <label>URL</label>
+          <input type="url" id="add-url" placeholder="https://instagram.com/reel/..." oninput="updateAddPreview()">
+        </div>
+        <div id="add-fields-text" style="display:none">
+          <label>Text</label>
+          <textarea id="add-text" placeholder="Write something..." oninput="updateAddPreview()"></textarea>
+        </div>
+        <div id="add-fields-image" style="display:none">
+          <label>Image</label>
+          <div class="file-upload-area" id="add-upload"
+            onclick="document.getElementById('add-file').click()"
+            ondragover="event.preventDefault(); this.classList.add('dragging')"
+            ondragleave="this.classList.remove('dragging')"
+            ondrop="handleAddDrop(event)">
+            Drop image or click to upload
+            <input type="file" id="add-file" accept="image/*" style="display:none" onchange="handleAddFile(this)">
+            <div id="add-file-preview"></div>
+          </div>
+        </div>
+        <div id="add-fields-video" style="display:none">
+          <label>Video (max 50MB)</label>
+          <div class="file-upload-area" id="add-video-upload"
+            onclick="document.getElementById('add-video-file').click()"
+            ondragover="event.preventDefault(); this.classList.add('dragging')"
+            ondragleave="this.classList.remove('dragging')"
+            ondrop="handleAddVideoDrop(event)">
+            Drop video or click to upload
+            <input type="file" id="add-video-file" accept="video/*" style="display:none" onchange="handleAddVideoFile(this)">
+            <div id="add-video-preview"></div>
+          </div>
+        </div>
+        <div style="margin-top:0.75rem">
+          <label>Tags</label>
+          <div class="tag-selector" id="add-tag-selector"></div>
+        </div>
+        <div class="live-preview" id="add-live-preview" style="display:none">
+          <div class="live-preview-label">Preview</div>
+          <div class="live-preview-content" id="add-preview-content"></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn" onclick="saveAddItem()">Add Item</button>
+          <button class="btn btn-outline" onclick="closeAddModal()">Cancel</button>
         </div>
       </div>
-      <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
-        <button class="btn btn-outline" style="font-size:0.75rem;padding:0.3rem 0.6rem;" onclick="showNewCategoryRow()">+ New Category</button>
-        <button class="btn btn-outline" style="font-size:0.75rem;padding:0.3rem 0.6rem;" onclick="showNewSubcategoryRow()">+ New Subcategory</button>
-      </div>
-      <div id="newCategoryRow" class="new-inline-row" style="display:none;margin-bottom:0.75rem;">
-        <input type="text" id="newCatName" placeholder="Category name...">
-        <button class="btn" onclick="createCategoryInline()">Create</button>
-      </div>
-      <div id="newSubcategoryRow" class="new-inline-row" style="display:none;margin-bottom:0.75rem;">
-        <input type="text" id="newSubName" placeholder="Subcategory name...">
-        <button class="btn" onclick="createSubcategoryInline()">Create</button>
-      </div>
-      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:0.75rem;">
-      <div class="form-row">
-        <div>
-          <label>Type</label>
-          <select id="add-type" onchange="toggleAddFields(); updateAddPreview();">
-            <option value="embed">Embed (link)</option>
-            <option value="text">Text</option>
-            <option value="image">Image</option>
-            <option value="video">Video</option>
-          </select>
+
+      <!-- BULK IMPORT MODE -->
+      <div id="addBulkMode" style="display:none">
+        <div style="margin-bottom:0.75rem">
+          <label>Scene</label>
+          <select id="bulk-scene"></select>
         </div>
-        <div>
-          <label>Title (optional)</label>
-          <input type="text" id="add-title" placeholder="Name this item">
+        <div class="form-row">
+          <div>
+            <label>Category</label>
+            <select id="bulk-category" onchange="populateBulkSubcategorySelect()">
+            </select>
+          </div>
+          <div>
+            <label>Subcategory</label>
+            <select id="bulk-subcategory">
+            </select>
+          </div>
         </div>
-      </div>
-      <div id="add-fields-embed">
-        <label>URL</label>
-        <input type="url" id="add-url" placeholder="https://instagram.com/reel/..." oninput="updateAddPreview()">
-      </div>
-      <div id="add-fields-text" style="display:none">
-        <label>Text</label>
-        <textarea id="add-text" placeholder="Write something..." oninput="updateAddPreview()"></textarea>
-      </div>
-      <div id="add-fields-image" style="display:none">
-        <label>Image</label>
-        <div class="file-upload-area" id="add-upload"
-          onclick="document.getElementById('add-file').click()"
-          ondragover="event.preventDefault(); this.classList.add('dragging')"
-          ondragleave="this.classList.remove('dragging')"
-          ondrop="handleAddDrop(event)">
-          Drop image or click to upload
-          <input type="file" id="add-file" accept="image/*" style="display:none" onchange="handleAddFile(this)">
-          <div id="add-file-preview"></div>
+        <div style="margin-bottom:0.75rem">
+          <label>Tags</label>
+          <div class="tag-selector" id="bulk-tag-selector"></div>
         </div>
-      </div>
-      <div id="add-fields-video" style="display:none">
-        <label>Video (max 50MB)</label>
-        <div class="file-upload-area" id="add-video-upload"
-          onclick="document.getElementById('add-video-file').click()"
-          ondragover="event.preventDefault(); this.classList.add('dragging')"
-          ondragleave="this.classList.remove('dragging')"
-          ondrop="handleAddVideoDrop(event)">
-          Drop video or click to upload
-          <input type="file" id="add-video-file" accept="video/*" style="display:none" onchange="handleAddVideoFile(this)">
-          <div id="add-video-preview"></div>
+        <hr style="border:none;border-top:1px solid var(--border);margin-bottom:0.75rem;">
+        <div style="margin-bottom:0.75rem">
+          <label>Paste URLs (one per line)</label>
+          <textarea id="bulk-urls" placeholder="https://instagram.com/reel/abc123&#10;https://youtube.com/watch?v=xyz&#10;https://tiktok.com/@user/video/123" rows="8" style="width:100%;resize:vertical;font-size:0.85rem;line-height:1.6;"></textarea>
+          <div id="bulk-url-count" style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;">0 URLs</div>
         </div>
-      </div>
-      <div style="margin-top:0.75rem">
-        <label>Tags</label>
-        <div class="tag-selector" id="add-tag-selector"></div>
-      </div>
-      <div class="live-preview" id="add-live-preview" style="display:none">
-        <div class="live-preview-label">Preview</div>
-        <div class="live-preview-content" id="add-preview-content"></div>
-      </div>
-      <div class="form-actions">
-        <button class="btn" onclick="saveAddItem()">Add Item</button>
-        <button class="btn btn-outline" onclick="closeAddModal()">Cancel</button>
+        <div class="form-actions">
+          <button class="btn" onclick="saveBulkItems()">Import All</button>
+          <button class="btn btn-outline" onclick="closeAddModal()">Cancel</button>
+        </div>
+        <div id="bulk-progress" style="display:none;margin-top:0.75rem;">
+          <div style="background:var(--card);border-radius:8px;overflow:hidden;height:6px;">
+            <div id="bulk-progress-bar" style="height:100%;background:var(--accent);transition:width 0.2s;width:0%"></div>
+          </div>
+          <div id="bulk-progress-text" style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;">Importing...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -725,16 +793,14 @@
         }
       }
 
-      // Row 3: Scene filter
-      if (allScenes.length > 0) {
-        html += `<div class="filter-row">`;
-        html += `<span class="filter-label">Scene</span>`;
-        html += `<span class="filter-pill ${activeSceneFilter === null ? 'active' : ''}" onclick="setSceneFilter(null)">All</span>`;
-        allScenes.forEach(scene => {
-          html += `<span class="filter-pill ${activeSceneFilter === scene.id ? 'active' : ''}" style="border-color:${esc(scene.color)}" onclick="setSceneFilter('${scene.id}')">${esc(scene.name)}</span>`;
-        });
-        html += `</div>`;
-      }
+      // Row 3: Scene filter (always visible)
+      html += `<div class="filter-row">`;
+      html += `<span class="filter-label">Scene</span>`;
+      html += `<span class="filter-pill ${activeSceneFilter === null ? 'active' : ''}" onclick="setSceneFilter(null)">All</span>`;
+      allScenes.forEach(scene => {
+        html += `<span class="filter-pill ${activeSceneFilter === scene.id ? 'active' : ''}" style="border-color:${esc(scene.color)}" onclick="setSceneFilter('${scene.id}')">${esc(scene.name)}</span>`;
+      });
+      html += `</div>`;
 
       // Row 4: Tags
       if (allTags.length > 0) {
@@ -812,6 +878,7 @@
           subsHtml += `
             <div class="subcategory" data-sub-id="${sub.id}">
               <div class="subcategory-header-row">
+                <span class="drag-handle sub-drag-handle">⠿</span>
                 ${editMode
                   ? `<input class="subcategory-title-input" value="${esc(sub.title)}" onchange="updateSubcategory('${sub.id}', this.value)">`
                   : `<span class="subcategory-title">${esc(sub.title)}</span>`
@@ -830,6 +897,7 @@
         html += `
           <div class="category" data-cat-id="${cat.id}">
             <div class="category-header-row">
+              <span class="drag-handle cat-drag-handle">⠿</span>
               ${editMode
                 ? `<input class="category-title-input" value="${esc(cat.title)}" onchange="updateCategory('${cat.id}', this.value)">`
                 : `<span class="category-title">${esc(cat.title)}</span>`
@@ -849,6 +917,7 @@
 
       // Init sortable in edit mode
       if (editMode) {
+        // Drag reorder items
         document.querySelectorAll('.items-grid').forEach(el => {
           new Sortable(el, {
             group: 'items',
@@ -859,15 +928,45 @@
             onEnd: async (evt) => {
               const itemId = evt.item.dataset.itemId;
               const newSubId = evt.to.dataset.subId;
-              // Update sort order in source grid
               const fromCards = evt.from.querySelectorAll('.card');
               await Promise.all(Array.from(fromCards).map((el, i) =>
                 db.from('items').update({ sort_order: i }).eq('id', el.dataset.itemId)
               ));
-              // Update sort order + subcategory in target grid
               const toCards = evt.to.querySelectorAll('.card');
               await Promise.all(Array.from(toCards).map((el, i) =>
                 db.from('items').update({ sort_order: i, subcategory_id: newSubId }).eq('id', el.dataset.itemId)
+              ));
+              loadAll();
+            }
+          });
+        });
+
+        // Drag reorder categories
+        new Sortable(container, {
+          animation: 200,
+          handle: '.cat-drag-handle',
+          ghostClass: 'sortable-ghost',
+          draggable: '.category',
+          onEnd: async () => {
+            const cats = container.querySelectorAll('.category');
+            await Promise.all(Array.from(cats).map((el, i) =>
+              db.from('categories').update({ sort_order: i }).eq('id', el.dataset.catId)
+            ));
+            loadAll();
+          }
+        });
+
+        // Drag reorder subcategories within each category
+        document.querySelectorAll('.category').forEach(catEl => {
+          new Sortable(catEl, {
+            animation: 200,
+            handle: '.sub-drag-handle',
+            ghostClass: 'sortable-ghost',
+            draggable: '.subcategory',
+            onEnd: async () => {
+              const subs = catEl.querySelectorAll('.subcategory');
+              await Promise.all(Array.from(subs).map((el, i) =>
+                db.from('subcategories').update({ sort_order: i }).eq('id', el.dataset.subId)
               ));
               loadAll();
             }
@@ -954,6 +1053,11 @@
       addSceneSel.innerHTML = '<option value="">— No scene —</option>' +
         allScenes.map(sc => `<option value="${sc.id}">${esc(sc.name)}</option>`).join('');
       renderTagSelector('add-tag-selector');
+      // Reset to single mode
+      switchAddMode('single');
+      document.getElementById('bulk-urls').value = '';
+      document.getElementById('bulk-url-count').textContent = '0 URLs';
+      document.getElementById('bulk-progress').style.display = 'none';
       document.getElementById('addModal').classList.add('open');
     }
     function closeAddModal() {
@@ -1143,6 +1247,96 @@
       toast('Item added!');
       closeAddModal();
       loadAll();
+    }
+
+    // ---- BULK IMPORT ----
+    function switchAddMode(mode) {
+      document.getElementById('addSingleMode').style.display = mode === 'single' ? '' : 'none';
+      document.getElementById('addBulkMode').style.display = mode === 'bulk' ? '' : 'none';
+      document.querySelectorAll('.add-mode-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`.add-mode-tab:${mode === 'single' ? 'first' : 'last'}-child`).classList.add('active');
+      if (mode === 'bulk') populateBulkSelects();
+    }
+
+    function populateBulkSelects() {
+      const catSel = document.getElementById('bulk-category');
+      catSel.innerHTML = allCategories.map(c => `<option value="${c.id}">${esc(c.title)}</option>`).join('');
+      populateBulkSubcategorySelect();
+      const sceneSel = document.getElementById('bulk-scene');
+      sceneSel.innerHTML = '<option value="">— No scene —</option>' +
+        allScenes.map(sc => `<option value="${sc.id}">${esc(sc.name)}</option>`).join('');
+      renderTagSelector('bulk-tag-selector');
+    }
+
+    function populateBulkSubcategorySelect() {
+      const catId = document.getElementById('bulk-category').value;
+      const sel = document.getElementById('bulk-subcategory');
+      const subs = allSubcategories.filter(s => s.category_id === catId);
+      sel.innerHTML = '<option value="">— General —</option>' +
+        subs.map(s => `<option value="${s.id}">${esc(s.title)}</option>`).join('');
+    }
+
+    // Live URL counter
+    document.addEventListener('DOMContentLoaded', () => {
+      const bulkTA = document.getElementById('bulk-urls');
+      if (bulkTA) bulkTA.addEventListener('input', () => {
+        const urls = bulkTA.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        document.getElementById('bulk-url-count').textContent = `${urls.length} URL${urls.length !== 1 ? 's' : ''}`;
+      });
+    });
+
+    async function saveBulkItems() {
+      let subId = document.getElementById('bulk-subcategory').value;
+      if (!subId) {
+        const catId = document.getElementById('bulk-category').value;
+        subId = await getOrCreateGeneralSub(catId);
+        if (!subId) { toast('Error creating subcategory', true); return; }
+      }
+
+      const sceneId = document.getElementById('bulk-scene').value || null;
+      const tagIds = getSelectedTagIds('bulk-tag-selector');
+      const urls = document.getElementById('bulk-urls').value
+        .split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+      if (urls.length === 0) { toast('Paste at least one URL', true); return; }
+
+      // Show progress
+      const prog = document.getElementById('bulk-progress');
+      const progBar = document.getElementById('bulk-progress-bar');
+      const progText = document.getElementById('bulk-progress-text');
+      prog.style.display = '';
+      progBar.style.width = '0%';
+
+      const existingItems = allItems.filter(i => i.subcategory_id === subId);
+      let baseOrder = existingItems.length;
+      let success = 0;
+      let failed = 0;
+
+      for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        const pct = Math.round(((i + 1) / urls.length) * 100);
+        progBar.style.width = pct + '%';
+        progText.textContent = `Importing ${i + 1} of ${urls.length}...`;
+
+        const { data, error } = await db.from('items').insert([{
+          subcategory_id: subId, type: 'embed', title: '', content: url,
+          sort_order: baseOrder + i, scene_id: sceneId
+        }]).select();
+
+        if (error) { failed++; continue; }
+        success++;
+
+        if (data && data[0] && tagIds.length > 0) {
+          await syncItemTags(data[0].id, tagIds);
+        }
+      }
+
+      prog.style.display = 'none';
+      toast(`Imported ${success} item${success !== 1 ? 's' : ''}${failed ? `, ${failed} failed` : ''}`);
+      if (success > 0) {
+        closeAddModal();
+        loadAll();
+      }
     }
 
     // ---- EDIT MODAL ----
