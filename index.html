@@ -1323,7 +1323,7 @@
           sort_order: baseOrder + i, scene_id: sceneId
         }]).select();
 
-        if (error) { failed++; continue; }
+        if (error) { console.error('Bulk insert error:', error, 'URL:', url, 'subId:', subId); failed++; continue; }
         success++;
 
         if (data && data[0] && tagIds.length > 0) {
